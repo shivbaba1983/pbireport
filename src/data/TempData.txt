@@ -1,0 +1,164 @@
+Yes ✅ that’s actually the best way to make your UI dynamic!
+Here’s how it works step by step:
+
+🔹 Step 1: Backend (.NET API) – Get all reports in a workspace
+
+In your PowerBIController add a new endpoint:
+
+[HttpGet("GetReports")]
+public async Task<IActionResult> GetReports()
+{
+    var app = ConfidentialClientApplicationBuilder
+        .Create(clientId)
+        .WithClientSecret(clientSecret)
+        .WithAuthority($"{authorityUrl}{tenantId}")
+        .Build();
+
+    var authResult = await app.AcquireTokenForClient(scope).ExecuteAsync();
+
+    using var pbiClient = new PowerBIClient(
+        new Uri("https://api.powerbi.com/"),
+        new TokenCredentials(authResult.AccessToken, "Bearer")
+    );
+
+    // 🔹 Fetch all reports in the workspace
+    var reports = await pbiClient.Reports.GetReportsInGroupAsync(workspaceId);
+
+    // Return only what UI needs (name + id)
+    var result = reports.Value.Select(r => new
+    {
+        id = r.Id,
+        name = r.Name
+    });
+
+    return Ok(result);
+}
+
+
+This will return JSON like:
+
+[
+  { "id": "1234-aaaa", "name": "Sales Dashboard" },
+  { "id": "5678-bbbb", "name": "Finance Report" },
+  { "id": "9012-cccc", "name": "Marketing KPIs" }
+]
+
+🔹 Step 2: Backend – Get embed info for a selected report
+
+Modify your existing GetEmbedInfo to accept a reportId:
+
+[HttpGet("GetEmbedInfo")]
+public async Task<IActionResult> GetEmbedInfo(Guid reportId)
+{
+    var app = ConfidentialClientApplicationBuilder
+        .Create(clientId)
+        .WithClientSecret(clientSecret)
+        .WithAuthority($"{authorityUrl}{tenantId}")
+        .Build();
+
+    var authResult = await app.AcquireTokenForClient(scope).ExecuteAsync();
+
+    using var pbiClient = new PowerBIClient(
+        new Uri("https://api.powerbi.com/"),
+        new TokenCredentials(authResult.AccessToken, "Bearer")
+    );
+
+    var report = await pbiClient.Reports.GetReportInGroupAsync(workspaceId, reportId.ToString());
+
+    var generateTokenRequestParameters = new GenerateTokenRequest("view");
+
+    var tokenResponse = await pbiClient.Reports.GenerateTokenAsync(
+        workspaceId,
+        reportId.ToString(),
+        generateTokenRequestParameters
+    );
+
+    return Ok(new
+    {
+        embedToken = tokenResponse.Token,
+        embedUrl = report.EmbedUrl,
+        reportId = report.Id
+    });
+}
+
+🔹 Step 3: React – Show dropdown & embed selected report
+import React, { useEffect, useRef, useState } from "react";
+import { models, service } from "powerbi-client";
+
+const PowerBIEmbed: React.FC = () => {
+  const reportRef = useRef<HTMLDivElement>(null);
+  const [reports, setReports] = useState<{ id: string; name: string }[]>([]);
+  const [selectedReport, setSelectedReport] = useState<string>("");
+
+  useEffect(() => {
+    // Load all reports on page load
+    async function fetchReports() {
+      const res = await fetch("https://localhost:5001/api/PowerBI/GetReports");
+      const data = await res.json();
+      setReports(data);
+    }
+    fetchReports();
+  }, []);
+
+  const loadReport = async (reportId: string) => {
+    const response = await fetch(
+      `https://localhost:5001/api/PowerBI/GetEmbedInfo?reportId=${reportId}`
+    );
+    const data = await response.json();
+
+    if (reportRef.current) {
+      (window.powerbi as service.Service).reset(reportRef.current);
+
+      const config: models.IReportEmbedConfiguration = {
+        type: "report",
+        id: data.reportId,
+        embedUrl: data.embedUrl,
+        accessToken: data.embedToken,
+        tokenType: models.TokenType.Embed
+      };
+
+      (window.powerbi as service.Service).embed(reportRef.current, config);
+    }
+  };
+
+  return (
+    <div>
+      {/* Dropdown for reports */}
+      <select
+        value={selectedReport}
+        onChange={(e) => {
+          setSelectedReport(e.target.value);
+          loadReport(e.target.value);
+        }}
+      >
+        <option value="">-- Select Report --</option>
+        {reports.map((r) => (
+          <option key={r.id} value={r.id}>
+            {r.name}
+          </option>
+        ))}
+      </select>
+
+      {/* Container for embedded report */}
+      <div ref={reportRef} style={{ height: "800px", width: "100%", marginTop: "20px" }} />
+    </div>
+  );
+};
+
+export default PowerBIEmbed;
+
+🔹 Workflow
+
+React calls GetReports → dropdown filled with all reports from the workspace.
+
+User selects a report.
+
+React calls GetEmbedInfo?reportId=xxx.
+
+API generates token + embedUrl for that report.
+
+React embeds it in the UI.
+
+👉 This way you don’t need to hardcode report IDs — your React UI becomes fully dynamic and can show any report in the workspace.
+
+Do you want me to also show you how to filter reports by user role (e.g., only show “Finance” reports to Finance users)?
