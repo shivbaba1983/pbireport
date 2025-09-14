@@ -1,0 +1,144 @@
+1️⃣ Update API (your .NET Core backend)
+
+For testing, let’s make a simple endpoint that returns reports list:
+
+[HttpGet("GetReports")]
+public IActionResult GetReports()
+{
+    var reports = new[]
+    {
+        new { id = "12345678-90ab-cdef-1234-567890abcdef", name = "Sales Dashboard" },
+        new { id = "abcdef12-3456-7890-abcd-ef1234567890", name = "Finance Dashboard" }
+    };
+
+    return Ok(reports);
+}
+
+
+Later this can call Power BI REST API to fetch reports from a workspace.
+
+2️⃣ Redux Slice (powerbiSlice.ts)
+import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+
+interface Report {
+  id: string;
+  name: string;
+}
+
+interface PowerBIState {
+  reports: Report[];
+  selectedReport: string;
+  loading: boolean;
+  error: string | null;
+}
+
+const initialState: PowerBIState = {
+  reports: [],
+  selectedReport: "",
+  loading: false,
+  error: null,
+};
+
+// 🔹 Async thunk to fetch reports
+export const fetchReports = createAsyncThunk<Report[]>(
+  "powerbi/fetchReports",
+  async () => {
+    const response = await fetch("https://localhost:5001/api/powerbi/GetReports");
+    if (!response.ok) throw new Error("Failed to fetch reports");
+    return (await response.json()) as Report[];
+  }
+);
+
+const powerbiSlice = createSlice({
+  name: "powerbi",
+  initialState,
+  reducers: {
+    setSelectedReport(state, action: PayloadAction<string>) {
+      state.selectedReport = action.payload;
+    },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchReports.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchReports.fulfilled, (state, action) => {
+        state.loading = false;
+        state.reports = action.payload;
+      })
+      .addCase(fetchReports.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || "Failed to load reports";
+      });
+  },
+});
+
+export const { setSelectedReport } = powerbiSlice.actions;
+export default powerbiSlice.reducer;
+
+3️⃣ Component (PowerBIEmbed.tsx)
+import React, { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState, AppDispatch } from "./store";
+import { fetchReports, setSelectedReport } from "./powerbiSlice";
+import "./PowerBIEmbed.scss";
+
+const PowerBIEmbed: React.FC = () => {
+  const dispatch: AppDispatch = useDispatch();
+  const { reports, selectedReport, loading, error } = useSelector(
+    (state: RootState) => state.powerbi
+  );
+
+  useEffect(() => {
+    dispatch(fetchReports());
+  }, [dispatch]);
+
+  return (
+    <div className="powerbi-embed-container">
+      {loading && <p>Loading reports...</p>}
+      {error && <p style={{ color: "red" }}>{error}</p>}
+
+      {!loading && !error && (
+        <>
+          <select
+            value={selectedReport}
+            onChange={(e) => dispatch(setSelectedReport(e.target.value))}
+          >
+            <option value="">-- Select Report --</option>
+            {reports.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+
+          <div className="report-frame">
+            {selectedReport ? (
+              <div className="mock-viewer">
+                Loaded report: {selectedReport}
+              </div>
+            ) : (
+              <div className="mock-viewer">Please select a report</div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+export default PowerBIEmbed;
+
+
+✅ Flow now:
+
+On load, fetchReports() calls your API (/GetReports).
+
+Redux stores the reports list.
+
+Dropdown populates dynamically.
+
+Selecting a report updates Redux and shows it in viewer.
+
+Do you also want me to extend this so that when a user selects a report, the React app fetches its embed URL + token from API and actually loads it inside the Power BI iframe (instead of just showing mock-viewer)?
