@@ -440,3 +440,74 @@ Ensure outbound port 443 is open from your on-prem server.
 👉 Do you want me to show you where exactly in the Databricks UI you’ll find the Server Hostname and HTTP Path (with screenshots-style instructions)?
 
 ChatGPT can make mista
+
+
+
+Great question 👍 — short answer: no, you cannot connect with just the Databricks token.
+
+Here’s why:
+
+🔑 How Databricks Authentication Works
+
+The token (Personal Access Token, PAT) is just your credential.
+
+To actually connect, you must also tell the driver or API where to connect → that means you still need:
+
+Server Hostname (e.g. xxxx.azuredatabricks.net)
+
+HTTP Path (specific SQL Warehouse endpoint)
+
+Port (443, for HTTPS)
+
+The ODBC driver (Simba Spark ODBC) requires all of those parameters in order to establish a TLS/HTTP connection.
+
+✅ Alternatives with Token-only Authentication
+1. Databricks REST API
+
+If you want to use only the token without connection string complexity, you can call the SQL Statement Execution REST API directly:
+
+using System;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Threading.Tasks;
+
+class Program
+{
+    static async Task Main()
+    {
+        string token = "<your-PAT>";
+        string hostname = "<something>.azuredatabricks.net";   // still needed
+        string httpPath = "/sql/1.0/warehouses/1234abcd5678efgh"; // still needed
+        string endpoint = $"https://{hostname}/api/2.0/sql/statements/";
+
+        using (HttpClient client = new HttpClient())
+        {
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            string payload = "{\"statement\": \"SELECT * FROM my_catalog.my_schema.my_table LIMIT 10\", \"warehouse_id\": \"1234abcd5678efgh\"}";
+
+            var content = new StringContent(payload, Encoding.UTF8, "application/json");
+            var response = await client.PostAsync(endpoint, content);
+
+            string result = await response.Content.ReadAsStringAsync();
+            Console.WriteLine(result);
+        }
+    }
+}
+
+
+⚠️ Even here, you still need the warehouse_id / HTTP Path to tell Databricks which compute cluster (SQL Warehouse) should execute the query.
+
+2. ODBC / JDBC
+
+With ODBC/JDBC, the token is used in place of username/password,
+but you still must provide host + HTTP Path.
+
+🚀 Bottom line
+
+The token alone is not enough.
+
+You always need at least host + SQL Warehouse HTTP Path + token.
+
+👉 Do you want me to show you a minimal working sample using only hostname + token + warehouse id (no DSN, no long connection string) in your .NET app?
