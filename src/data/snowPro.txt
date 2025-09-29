@@ -1,0 +1,150 @@
+🧠 SnowPro Core Sample Quiz
+
+Instructions: For each question, pick the best answer(s). Some are multiple select.
+
+Questions
+
+Which of the following is a feature of Snowflake’s architecture?
+A. Decoupled compute and storage
+B. Columnar storage only on local disks
+C. Shared-nothing multi-cluster
+D. In-place updates only
+
+Snowflake provides data protection through which mechanisms?
+A. Time Travel
+B. Fail-safe
+C. Always-on full backups
+D. Data masking
+
+In Snowflake, what does “virtual warehouse” refer to?
+A. Storage cluster
+B. Compute resource that executes queries
+C. A logical view over data
+D. A replication node
+
+Which SQL statements can be used to load JSON or semi-structured data in Snowflake?
+A. COPY INTO
+B. INSERT INTO
+C. LOAD JSON
+D. COPY INTO <table> FROM <stage>
+
+Which of these are valid roles or parts of Snowflake’s security model?
+A. Role hierarchy / inheritance
+B. Row-level access via masking policies
+C. Sharing credentials across accounts
+D. Network policies (IP whitelisting)
+
+What does Snowflake’s Time Travel feature allow you to do?
+A. Query data as of a previous point in time
+B. Undo DDL changes
+C. Roll back to a previous state within retention window
+D. Permanently delete all past versions
+
+Which statements about “fail-safe” are correct?
+A. Fail-safe is part of the Time Travel retention
+B. Fail-safe is for 7 days after Time Travel retention ends
+C. Fail-safe allows user-initiated restore
+D. Fail-safe is enforced by Snowflake for recovery
+
+When creating an external stage in Snowflake to load data from AWS S3, you need which pieces of info?
+A. S3 bucket URL
+B. AWS IAM role or access keys
+C. Region
+D. Snowflake user password
+
+Which of these are types of replication / high availability options in Snowflake?
+A. Database replication
+B. Cross-region replication
+C. Multi-cluster warehouses
+D. Failover / failsafe
+
+Which SQL function is used to flatten semi-structured JSON arrays?
+A. FLATTEN()
+B. ARRAY_EXPLODE()
+C. LATERAL FLATTEN()
+D. JSON_EXTRACT_ARRAY()
+
+What are clustering keys used for in Snowflake?
+A. Improve performance of certain queries
+B. Enforce unique constraints
+C. Physically partition data on storage
+D. Automatically maintain order in results
+
+Which of the following are best practices to optimize query performance?
+A. Prune partitions (via clustering)
+B. Use appropriate warehouse size
+C. Use SELECT * on large tables always
+D. Use caching / result reuse
+
+Snowflake’s data sharing feature allows which of the following?
+A. Share data across accounts without copying
+B. Exchange live data sets
+C. Grant full DML rights to consumers
+D. Share compute resources
+
+What is the difference between internal stage and external stage?
+A. Internal stage stores files inside Snowflake
+B. External stage refers to S3 / Azure / GCS
+C. Internal stage requires network access
+D. External stage is managed by Snowflake
+
+Which statements about data encryption in Snowflake are true?
+A. Snowflake always encrypts data at rest
+B. Customer can manage their own keys (BYOK)
+C. Encryption in transit is optional
+D. Metadata is not encrypted
+
+Which of these are common semi-structured data formats handled in Snowflake?
+A. JSON
+B. XML
+C. Avro
+D. Parquet
+
+In Snowflake, what does Zero-Copy Cloning do?
+A. Create full physical copy of data
+B. Enable clone creation without duplicate storage
+C. Allow independent DML operations on clone
+D. Force table locks
+
+Which of the following influences storage costs in Snowflake?
+A. Amount of data in micro-partitions
+B. Number of historical versions retained
+C. Frequent cloning operations
+D. Number of warehouses running
+
+Which features help manage cost in Snowflake?
+A. Auto-suspend / auto-resume warehouses
+B. Resource monitors
+C. Unlimited warehouse size
+D. Multi-cluster scaling always on
+
+What SQL command would you use to set a masking policy on a column?
+A. ALTER TABLE ... SET MASKING POLICY ...
+B. CREATE MASKING POLICY ...
+C. ALTER TABLE ... ALTER COLUMN ... SET MASKING POLICY
+D. GRANT MASKING POLICY ...
+
+✅ Answers & Explanations
+#	Answer(s)	Explanation
+1	A, C	Snowflake separates compute & storage; it also uses a shared-nothing concept.
+2	A, B	Time Travel and Fail-safe are core data protection features.
+3	B	A virtual warehouse is a compute cluster to process queries.
+4	A, D	You load semi-structured data via COPY INTO ... FROM <stage>.
+5	A, B, D	Role hierarchy, masking policies, network policies are valid security features.
+6	A, C	You can query past states and roll back within retention windows.
+7	B, D	Fail-safe kicks in after Time Travel retention, and is managed by Snowflake.
+8	A, B, C	You need bucket URL, region, and credentials / IAM role.
+9	A, B, D	You can replicate DBs, across regions, and failover between accounts.
+10	A, C	FLATTEN() (often via LATERAL FLATTEN()) is used to expand JSON arrays.
+11	A	Clustering helps optimize queries by reducing scanned micro-partitions.
+12	A, B, D	Use of SELECT * is not recommended for large tables.
+13	A, B	Data sharing shares live data, not compute or DML rights inherently.
+14	A, B	Internal = inside Snowflake, external = cloud storage outside.
+15	A, B	Snowflake encrypts data at rest & in transit; metadata is also encrypted.
+16	A, B, C, D	Snowflake supports JSON, XML, Avro, Parquet and more semi-structured formats.
+17	B, C	Zero-copy cloning does not duplicate data initially; clones can diverge.
+18	A, B, C	Historical versions & micro-partitions contribute to storage size.
+19	A, B	Auto-suspend / monitors help control compute costs.
+20	B, C	You define a masking policy then apply it to a column via ALTER TABLE ... ALTER COLUMN.
+
+If you like, I can turn this quiz into an interactive web version (React) with scoring and feedback so you can test yourself “live.” Want me to build that for you?
