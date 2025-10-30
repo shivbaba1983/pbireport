@@ -1,0 +1,147 @@
+npm install xlsx axios
+🧩 React Component: ExcelUploader.tsx
+tsx
+Copy code
+import React, { useState } from 'react';
+import * as XLSX from 'xlsx';
+import axios from 'axios';
+import './ExcelUploader.scss';
+
+const ExcelUploader: React.FC = () => {
+  const [fileName, setFileName] = useState('');
+  const [progress, setProgress] = useState(0);
+  const [message, setMessage] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setFileName(file.name);
+    setProgress(0);
+    setMessage('');
+    setIsUploading(true);
+
+    try {
+      // Step 1: Read Excel file
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data);
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+      // Step 2: Validate data
+      const validData = [];
+      const invalidData = [];
+      for (let i = 0; i < jsonData.length; i++) {
+        const row = jsonData[i];
+        const isValid =
+          row['Name'] &&
+          row['Email'] &&
+          /^\S+@\S+\.\S+$/.test(row['Email']) &&
+          !isNaN(row['Age']);
+        if (isValid) validData.push(row);
+        else invalidData.push({ rowNumber: i + 2, ...row }); // +2 accounts for header row
+      }
+
+      if (invalidData.length > 0) {
+        console.warn('Invalid rows found:', invalidData);
+      }
+
+      // Step 3: Send data in batches (e.g. 1000 records per API call)
+      const batchSize = 1000;
+      for (let i = 0; i < validData.length; i += batchSize) {
+        const batch = validData.slice(i, i + batchSize);
+        const percent = Math.round(((i + batch.length) / validData.length) * 100);
+        setProgress(percent);
+
+        await axios.post('/api/uploadExcelData', batch, {
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      setMessage(`Upload completed! ✅ ${validData.length} valid rows uploaded.`);
+    } catch (error) {
+      console.error('Error processing file:', error);
+      setMessage('❌ Error processing file. Check console for details.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <div className="excel-uploader">
+      <h2>Excel File Upload</h2>
+      <input
+        type="file"
+        accept=".xlsx, .xls"
+        onChange={handleFileUpload}
+        disabled={isUploading}
+      />
+      {fileName && <p>File: {fileName}</p>}
+
+      {isUploading && (
+        <div className="progress-container">
+          <div className="progress-bar" style={{ width: `${progress}%` }}></div>
+          <p>{progress}% Processing...</p>
+        </div>
+      )}
+
+      {message && <p className="status">{message}</p>}
+    </div>
+  );
+};
+
+export default ExcelUploader;
+💅 ExcelUploader.scss
+scss
+Copy code
+.excel-uploader {
+  max-width: 600px;
+  margin: 20px auto;
+  text-align: center;
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+
+  input[type='file'] {
+    margin-top: 10px;
+  }
+
+  .progress-container {
+    margin: 20px 0;
+    background: #e9ecef;
+    border-radius: 8px;
+    overflow: hidden;
+    height: 24px;
+    position: relative;
+  }
+
+  .progress-bar {
+    background: #007bff;
+    height: 100%;
+    transition: width 0.3s ease;
+  }
+
+  .status {
+    margin-top: 10px;
+    font-weight: bold;
+  }
+}
+🖥️ Example Express API Endpoint
+In your backend (e.g. server.js or api/uploadExcelData.js):
+
+js
+Copy code
+app.post('/api/uploadExcelData', async (req, res) => {
+  try {
+    const data = req.body; // array of records
+    console.log(`Received batch of ${data.length} records`);
+    // TODO: Add DB insert logic here
+    res.json({ status: 'ok', count: data.length });
+  } catch (err) {
+    console.error('Upload error:', err);
+    res.status(500).json({ error: 'Failed to save data' });
+  }
+});
+Would you like me to extend this version to show invalid rows in a table with an option to download invalid rows as Excel for review?
