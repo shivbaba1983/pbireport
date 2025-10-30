@@ -1,7 +1,3 @@
-npm install xlsx axios
-🧩 React Component: ExcelUploader.tsx
-tsx
-Copy code
 import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
 import axios from 'axios';
@@ -92,9 +88,8 @@ const ExcelUploader: React.FC = () => {
 };
 
 export default ExcelUploader;
-💅 ExcelUploader.scss
-scss
-Copy code
+
+
 .excel-uploader {
   max-width: 600px;
   margin: 20px auto;
@@ -128,11 +123,8 @@ Copy code
     font-weight: bold;
   }
 }
-🖥️ Example Express API Endpoint
-In your backend (e.g. server.js or api/uploadExcelData.js):
 
-js
-Copy code
+
 app.post('/api/uploadExcelData', async (req, res) => {
   try {
     const data = req.body; // array of records
@@ -144,4 +136,136 @@ app.post('/api/uploadExcelData', async (req, res) => {
     res.status(500).json({ error: 'Failed to save data' });
   }
 });
-Would you like me to extend this version to show invalid rows in a table with an option to download invalid rows as Excel for review?
+
+
+
+
+using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
+
+namespace ExcelUploaderApi.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    public class UploadController : ControllerBase
+    {
+        // POST: api/upload
+        [HttpPost]
+        [Route("uploadExcelData")]
+        public IActionResult UploadExcelData([FromBody] List<ExcelRecord> records)
+        {
+            if (records == null || records.Count == 0)
+            {
+                return BadRequest(new { message = "No records found in upload." });
+            }
+
+            var validRecords = new List<ExcelRecord>();
+            var invalidRecords = new List<object>();
+
+            foreach (var record in records)
+            {
+                if (IsValidRecord(record))
+                {
+                    validRecords.Add(record);
+                }
+                else
+                {
+                    invalidRecords.Add(new
+                    {
+                        record,
+                        error = "Invalid or missing fields"
+                    });
+                }
+            }
+
+            // 🔹 Simulate saving valid records to a database or storage
+            Console.WriteLine($"✅ Received batch: {records.Count} records, {validRecords.Count} valid.");
+
+            // You can replace this with your DB save logic
+            // await _dbContext.AddRangeAsync(validRecords);
+            // await _dbContext.SaveChangesAsync();
+
+            return Ok(new
+            {
+                message = "Batch processed successfully.",
+                total = records.Count,
+                valid = validRecords.Count,
+                invalid = invalidRecords.Count
+            });
+        }
+
+        private bool IsValidRecord(ExcelRecord record)
+        {
+            if (string.IsNullOrWhiteSpace(record.Name) ||
+                string.IsNullOrWhiteSpace(record.Email) ||
+                !record.Email.Contains("@") ||
+                record.Age <= 0)
+                return false;
+
+            return true;
+        }
+    }
+
+    // Model that matches the Excel JSON structure
+    public class ExcelRecord
+    {
+        [Required]
+        public string Name { get; set; } = string.Empty;
+
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [Required]
+        public int Age { get; set; }
+    }
+}
+
+
+Example Program.cs (minimal API setup)
+
+Make sure your backend accepts JSON from the React frontend:
+
+
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add CORS policy for React app
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReactApp", policy =>
+    {
+        policy.WithOrigins("http://localhost:3000") // Update with your React app URL
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+var app = builder.Build();
+
+app.UseCors("AllowReactApp");
+app.UseAuthorization();
+app.MapControllers();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.Run();
+
+
+Frontend (React) configuration change
+
+In your axios.post call inside ExcelUploader.tsx, make sure to call:
+await axios.post('https://localhost:5001/api/upload/uploadExcelData', batch, {
+  headers: { 'Content-Type': 'application/json' },
+});
